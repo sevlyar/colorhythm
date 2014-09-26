@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Visualisation</title>
+	</head>
+	<body>
+		<canvas id="screen" width="1024" height="512">
+		</canvas>
+
+		<script src="https://code.jquery.com/jquery-2.1.0.min.js"></script>
+		<script src="colorhythm.js"></script>
+		
+		<script type="text/javascript">
+			var scr = Colorhythm.Screen();
+			scr.canvas($('#screen').get(0));
+
+			Colorhythm.loadTree({
+				"name": "#recorder",
+				"nodes": [
+					{	
+						"name": "standard.js#fader",
+						"conf": {
+							"color": "rgba(255,255,255,0.2)"
+						}
+					},
+					{
+						"name": "standard.js#dwt.haar",
+						"nodes": [
+							{ 
+								"name": "standard.js#dwt.haar.spectrum",
+								"nodes": [
+									{ 
+										"name": "standard.js#levels.normalizer",
+										"conf": {
+											a: 0.07
+										},
+										"nodes": [
+											"standard.js#scale-shadow",
+											"github.com/sevlyar/organ.js#"
+										]
+									}
+								]
+							},
+							"standard.js#oscilloscope"
+						]
+					}
+				]
+			}, scr);
+		</script>
+	</body>
+</html>
