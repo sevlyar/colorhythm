@@ -65,7 +65,7 @@ Colorhythm(function($) {
 		if (scriptFiles[url] === undefined) {
 			console.log('Colorhythm: loading module ' + url + '...');
 			scriptFiles[url] = def;
-			jQuery.getScript('/plugins/' + url)
+			jQuery.getScript('plugins/' + url)
 				.done(function() {
 					console.log('Colorhythm: - module ' + url + ' loaded.');
 					scriptFiles[url] = true;
