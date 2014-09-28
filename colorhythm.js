@@ -67,7 +67,7 @@ Colorhythm(function($) {
 			scriptFiles[url] = def;
 			jQuery.getScript('plugins/' + url)
 				.done(function() {
-					console.log('Colorhythm: - module ' + url + ' loaded.');
+					console.log('Colorhythm: module ' + url + ' loaded.');
 					scriptFiles[url] = true;
 					def.resolve();
 				})
@@ -237,8 +237,8 @@ Colorhythm(function($) {
 				}
 			});
 	}
-	$.loadTree = function(nodeConf, screen) {
-		loadTree(null, nodeConf, screen);
+	$.createVisualization = function(conf, screen) {
+		loadTree(null, conf, screen);
 	};
 });
 
