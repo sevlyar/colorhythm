@@ -340,24 +340,26 @@ Colorhythm(function($) {
 			}
 			return old;
 		},
+		_active: true,
+		on: function() {
+			this._active = true;
+		},
+		off: function() {
+			this._active = false;
+			this._canv.getContext('2d').clearRect(0, 0, this._canv.width, this._canv.height);
+		},
+		draw: function(render, data) {
+			if (this._active) {
+				render.draw(this._cx2d, this._offcanv, data);
+			}
+		},
 		present: function() {
-			if (this._canv !== null) {
+			if (this._canv !== null && this._active) {
 				this._cx2d.restore();
 				this._cx2d.save();
 				this._canv.getContext('2d').drawImage(this._offcanv, 0, 0);
 			}
-		},
-		draw: function(render, data) {
-			render.draw(this._cx2d, this._offcanv, data);
 		}
-
-		// _active: true,
-		// active: function(f) {
-		// 	if (f !== undefined) {
-		// 		this._active = f;
-		// 	}
-		// 	return this._active;
-		// }
 	};
 	$.registerComponent(Screen);
 	$.Screen = function() {
