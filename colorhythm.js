@@ -240,6 +240,11 @@ Colorhythm(function($) {
 	$.createVisualization = function(conf, screen) {
 		loadTree(null, conf, screen);
 	};
+	$.loadVisualization = function(path, screen) {
+		return jQuery.getJSON(path).done(function(conf) {
+			loadTree(null, conf, screen);
+		});
+	};	
 });
 
 Colorhythm(function($) {
