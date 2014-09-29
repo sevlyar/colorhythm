@@ -39,7 +39,7 @@ Colorhythm(function($) {
 		console.error('Colorhythm: navigator.getUserMedia not supported!');
 	}
 
-	var getUserMediaConf = { audio: true, video: true };
+	var getUserMediaConf = { audio: true };
 
 	function getUserMediaErrorCallback(err) {
 		console.error('Colorhythm: navigator.getUserMedia error: ', err);
