@@ -39,7 +39,7 @@ Colorhythm(function($) {
 		console.error('Colorhythm: navigator.getUserMedia not supported!');
 	}
 
-	var getUserMediaConf = { audio: true, video: true };
+	var getUserMediaConf = { audio: true };
 
 	function getUserMediaErrorCallback(err) {
 		console.error('Colorhythm: navigator.getUserMedia error: ', err);
@@ -67,7 +67,7 @@ Colorhythm(function($) {
 			scriptFiles[url] = def;
 			jQuery.getScript('plugins/' + url)
 				.done(function() {
-					console.log('Colorhythm: - module ' + url + ' loaded.');
+					console.log('Colorhythm: module ' + url + ' loaded.');
 					scriptFiles[url] = true;
 					def.resolve();
 				})
@@ -237,9 +237,14 @@ Colorhythm(function($) {
 				}
 			});
 	}
-	$.loadTree = function(nodeConf, screen) {
-		loadTree(null, nodeConf, screen);
+	$.createVisualization = function(conf, screen) {
+		loadTree(null, conf, screen);
 	};
+	$.loadVisualization = function(path, screen) {
+		return jQuery.getJSON(path).done(function(conf) {
+			loadTree(null, conf, screen);
+		});
+	};	
 });
 
 Colorhythm(function($) {
@@ -335,24 +340,26 @@ Colorhythm(function($) {
 			}
 			return old;
 		},
+		_active: true,
+		on: function() {
+			this._active = true;
+		},
+		off: function() {
+			this._active = false;
+			this._canv.getContext('2d').clearRect(0, 0, this._canv.width, this._canv.height);
+		},
+		draw: function(render, data) {
+			if (this._active) {
+				render.draw(this._cx2d, this._offcanv, data);
+			}
+		},
 		present: function() {
-			if (this._canv !== null) {
+			if (this._canv !== null && this._active) {
 				this._cx2d.restore();
 				this._cx2d.save();
 				this._canv.getContext('2d').drawImage(this._offcanv, 0, 0);
 			}
-		},
-		draw: function(render, data) {
-			render.draw(this._cx2d, this._offcanv, data);
 		}
-
-		// _active: true,
-		// active: function(f) {
-		// 	if (f !== undefined) {
-		// 		this._active = f;
-		// 	}
-		// 	return this._active;
-		// }
 	};
 	$.registerComponent(Screen);
 	$.Screen = function() {
