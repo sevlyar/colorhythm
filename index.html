@@ -1,20 +1,37 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Visualisation</title>
+		<title>Colorhythm.js - music visualization library and web application</title>
+		<link rel="stylesheet" type="text/css" href="style.css">
 	</head>
 	<body>
-		<canvas id="screen" width="1024" height="512">
-		</canvas>
+		<div class="container border">
+			<a class="button dark" href="http://sevlyar.github.io/colorhythm/">colorhythm.js</a>
+			<a class="button dark" href="https://github.com/sevlyar/colorhythm">code on github.com</a>
+			<a class="button dark pull-right" href="https://github.com/sevlyar/colorhythm">help</a>
+		</div>
 
+		<div class="container">
+			<h1>Colorhythm.js - music visualization library and web application</h1>
+			<div class="error-msg">
+				<b>Colorhythm.js</b> - simple music visualization library and web app
+			</div>
+		</div>
+
+		<div class="container">
+			<div class="screen-container">
+				<canvas class="screen" data-visualization="plugins/github.com/sevlyar/visualization.json"></canvas>
+			</div>
+		</div>
+
+<!-- 		<div class="container">
+			<div class="screen-container">
+				<canvas class="screen" data-visualization="plugins/github.com/sevlyar/ring.json"></canvas>
+			</div>
+		</div>
+ -->
 		<script src="https://code.jquery.com/jquery-2.1.0.min.js"></script>
 		<script src="colorhythm.js"></script>
-		
-		<script type="text/javascript">
-			var scr = Colorhythm.Screen();
-			scr.canvas($('#screen').get(0));
-
-			Colorhythm.loadVisualization("plugins/github.com/sevlyar/visualization.json", scr);
-		</script>
+		<script src="app.js"></script>
 	</body>
 </html>
