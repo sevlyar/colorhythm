@@ -149,14 +149,13 @@ Colorhythm(function($) {
 				h = canvas.height;
 			var hh = h/2;
 			var hscale = (h/2);
-			var vscale = (samples.length/w);
+			var vscale = (w/samples.length);
 
 			cx.beginPath();
 			cx.moveTo(0, hh);
 			for (var i = 0; i < samples.length; i+=2) {
-				cx.lineTo(i/vscale, hh + samples[i]*hscale);
+				cx.lineTo(vscale*i, hh + samples[i]*hscale);
 			}
-			cx.lineTo(samples.length, hh);
 			cx.stroke();
 		}
 	};
@@ -229,8 +228,8 @@ Colorhythm(function($) {
 		type: $.RENDER,
 		name: 'standard.js#scale-shadow',
 		conf: {
-			min: 0.99,
-			max: 1.05,
+			min: 0.995,
+			max: 1.03,
 			channel: 0
 		},
 		draw: function(cx, canvas, data) {

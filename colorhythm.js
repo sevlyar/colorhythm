@@ -9,40 +9,65 @@ var Colorhythm = (function(){
 }());
 
 Colorhythm(function($) {
-	var AudioContext = 	window.AudioContext || 
-						window.webkitAudioContext;
+	function ColorhythmError(id, message, err) {
+		this.name = 'ColorhythmError';
+		this.id = id || 'ERR';
+		this.message = message || '';
+		this.err = err || null;
+	}
+	ColorhythmError.prototype = new Error();
+	ColorhythmError.prototype.constructor = ColorhythmError;
+
+	$.onerror = null;
+	$.error = function(message, err) {
+		if ($.onerror) {
+			$.onerror(new ColorhythmError(message, err));
+		}
+	};
+});
+
+Colorhythm(function($) {
+	var AudioContext = 	
+		window.AudioContext || 
+		window.webkitAudioContext;
 
 	if (AudioContext) {
 		console.log('Colorhythm: AudioContext supported.');
 	} else {
-		console.error('Colorhythm: AudioContext not supported!');
+		console.warn('Colorhythm: AudioContext not supported!');
 	}
 
 	var audioContext = null;
 	$.getAudioContext = function() {
 		if (audioContext === null) {
-			audioContext = new AudioContext();
+			if (AudioContext) {
+				audioContext = new AudioContext();
+			} else {
+				$.error('EAUDIOUNSUP', 'Unable get audio context: this browser does not support Web Audio API');
+			}
 		}
 		return audioContext;
 	};
 });
 
 Colorhythm(function($) {
-	navigator.getUserMedia = 	navigator.getUserMedia ||
-								navigator.webkitGetUserMedia ||
-								navigator.mozGetUserMedia ||
-								navigator.msGetUserMedia;
+	navigator.getUserMedia = 	
+		navigator.getUserMedia ||
+		navigator.webkitGetUserMedia ||
+		navigator.mozGetUserMedia ||
+		navigator.msGetUserMedia;
 
 	if (navigator.getUserMedia) {
 		console.log('Colorhythm: navigator.getUserMedia supported.');
 	} else {
-		console.error('Colorhythm: navigator.getUserMedia not supported!');
+		console.warn('Colorhythm: navigator.getUserMedia not supported!');
 	}
 
 	var getUserMediaConf = { audio: true };
 
 	function getUserMediaErrorCallback(err) {
 		console.error('Colorhythm: navigator.getUserMedia error: ', err);
+		$.error('EGETUSERMEDIA', 'Unable to access the audio device', err);
 	}
 
 	$.getUserMedia = function(callback) {
@@ -321,22 +346,9 @@ Colorhythm(function($) {
 
 		_canv: null,
 		canvas: function(canv) {
-			var self = this;
-			function resizeHandler() {
-				self._offcanv.width = self._canv.width;
-				self._offcanv.height = self._canv.height;
-			}
-
 			var old = this._canv;
 			if (canv !== undefined) {
-				if (old !== null) {
-					jQuery(old).off('resize', resizeHandler);
-				}
 				this._canv = canv;
-				if (canv !== null) {
-					resizeHandler();
-					jQuery(canv).on('resize', resizeHandler);
-				}
 			}
 			return old;
 		},
@@ -350,6 +362,14 @@ Colorhythm(function($) {
 		},
 		draw: function(render, data) {
 			if (this._active) {
+				if (this._offcanv.width != this._canv.clientWidth) {
+					this._canv.width = this._canv.clientWidth;
+					this._offcanv.width = this._canv.clientWidth;
+				}
+				if (this._offcanv.height != this._canv.clientHeight) {
+					this._canv.height = this._canv.clientHeight;
+					this._offcanv.height = this._canv.clientHeight;
+				}
 				render.draw(this._cx2d, this._offcanv, data);
 			}
 		},
