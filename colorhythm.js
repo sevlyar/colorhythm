@@ -321,22 +321,9 @@ Colorhythm(function($) {
 
 		_canv: null,
 		canvas: function(canv) {
-			var self = this;
-			function resizeHandler() {
-				self._offcanv.width = self._canv.width;
-				self._offcanv.height = self._canv.height;
-			}
-
 			var old = this._canv;
 			if (canv !== undefined) {
-				if (old !== null) {
-					jQuery(old).off('resize', resizeHandler);
-				}
 				this._canv = canv;
-				if (canv !== null) {
-					resizeHandler();
-					jQuery(canv).on('resize', resizeHandler);
-				}
 			}
 			return old;
 		},
@@ -350,6 +337,14 @@ Colorhythm(function($) {
 		},
 		draw: function(render, data) {
 			if (this._active) {
+				if (this._offcanv.width != this._canv.clientWidth) {
+					this._canv.width = this._canv.clientWidth;
+					this._offcanv.width = this._canv.clientWidth;
+				}
+				if (this._offcanv.height != this._canv.clientHeight) {
+					this._canv.height = this._canv.clientHeight;
+					this._offcanv.height = this._canv.clientHeight;
+				}
 				render.draw(this._cx2d, this._offcanv, data);
 			}
 		},
