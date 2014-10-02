@@ -17,12 +17,14 @@ $('.screen').each(function(i, el) {
 	fullscreen.after(' ');
 
 	fullscreen.click(function() {
+		$('body').css('overflow', 'hidden');
 		canvas.attr('id', 'fullscreen');
 	});
 
 	$(window).keyup(function(e) {
 		if (e.keyCode == 27) {
 			canvas.removeAttr('id');
+			$('body').css('overflow', 'auto');
 		}
 	});
 

@@ -248,3 +248,28 @@ Colorhythm(function($) {
 	};
 	$.registerComponent(Render);
 });
+
+// render stroke-colorer
+Colorhythm(function($) {
+	function Render(conf) {	}
+	Render.prototype = {
+		type: $.RENDER,
+		name: 'standard.js#stroke-colorer',
+		draw: function(cx, canvas, data) {
+			var max = 0,
+				imax = 0;
+			for (var i = 0; i < data.length; i++) {
+				if (data[i] > max) {
+					max = data[i];
+					imax = i;
+				}
+			}
+			if (max > 0.5) {
+				cx.strokeStyle = $.RingColors[imax];
+			} else {
+				cx.strokeStyle = 'black';
+			}
+		}
+	};
+	$.registerComponent(Render);
+});
