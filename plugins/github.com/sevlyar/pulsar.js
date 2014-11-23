@@ -2,23 +2,21 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'github.com/sevlyar/ring.js#',
+		name: 'github.com/sevlyar/pulsar#',
 		angle: 0,
 		draw: function(cx, canvas, samples) {
 			var w = canvas.width,
 				h = canvas.height;
 			var sqw = 10;	
-
+			
+			var fitness = 3;
+			var arcWd = 2*Math.PI/samples.length/fitness;
 			function drawFlash(i) {
 				var peak = h*samples[i]/2;
-				// cx.fillStyle = $.RingColors[i];
-				// cx.beginPath();
-				// cx.rect(-sqw/2, sqw, sqw, peak);
-				// cx.closePath();
-				// cx.fill();
+				var start = Math.random()*arcWd*(fitness);
 				cx.beginPath();
-				cx.arc(0, 0, peak, 0, 2*Math.PI/samples.length, false);
-				cx.lineWidth = 50;
+				cx.arc(0, 0, peak, start, start+arcWd, false);
+				cx.lineWidth = peak;
 				cx.strokeStyle = $.RingColors[i];
 				cx.stroke();				
 			}
@@ -31,6 +29,10 @@ Colorhythm(function($) {
 				drawFlash(i);
 				cx.rotate(-angle);
 			}
+			cx.beginPath();
+			cx.arc(0, 0, 90, 0, 2 * Math.PI, false);
+			cx.fillStyle = 'rgba(0,0,0,0.95)';
+			cx.fill();
 			cx.restore();
 			this.angle += 0.03;
 		}

@@ -2,7 +2,7 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'github.com/sevlyar/organ.js#',
+		name: 'github.com/sevlyar/organ#',
 		draw: function(cx, canvas, samples) {
 			var w = canvas.width,
 				h = canvas.height;

@@ -1,0 +1,48 @@
+{
+	"name": "Pulsar",
+	"author": "Sergey Yarmonov",
+	"descr": {
+		"RU": "",
+		"EN": ""
+	},
+
+	"screen": "#screen",
+
+	"process": [
+		"#recorder",
+		{ 
+			"name": "standard#dwt.haar",
+			"plug": "#WAVE"
+		},
+		"standard#dwt.haar.spectrum",
+		{ 
+			"name": "standard#levels.normalizer",
+			"plug": "#LEVELS"
+		}
+	],
+
+	"renders": [
+		{  
+			"name": "standard#fader",
+			"conf": {
+				"color": "rgba(0,0,0,0.1)"
+			}
+		},
+		{ 
+			"name": "standard#scale-shadow",
+			"jacks": ["#LEVELS"]
+		},
+		{ 
+			"name": "github.com/sevlyar/pulsar#",
+			"jacks": ["#LEVELS"]
+		},
+		{ 
+			"name": "standard#stroke-colorer",
+			"jacks": ["#LEVELS"]
+		},
+		{
+			"name": "standard#oscilloscope",
+			"jacks": ["#WAVE"]
+		}
+	]
+}
