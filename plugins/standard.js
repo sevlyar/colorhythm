@@ -3,7 +3,7 @@ Colorhythm(function($) {
 	function Processor(conf) {	}
 	Processor.prototype = {
 		type: $.PROCESSOR,
-		name: 'standard.js#bypass',
+		name: 'standard#bypass',
 		process: function(buffer) {
 			return buffer;
 		}
@@ -14,12 +14,48 @@ Colorhythm(function($) {
 	};
 });
 
+Colorhythm(function($) {
+	var plugs = {};
+
+	function Jack(conf) {
+		this.conf.name = conf && conf.name || 'master'; 
+	}
+	Jack.prototype = {
+		type: $.SOURCE,
+		name: 'standard#jack',
+		_stub: $.createBuffer(4),
+		getData: function() {
+			var plug = plugs[this.conf.name];
+			if (!plug) {
+				return this._stub;
+			}
+			plug.getData();
+		}
+	}
+	Jack.prototype.constructor = Jack;
+	$.registerComponent(Jack);
+
+	// define jack plug-in point
+	function Plug(conf) {
+		this.conf.name = conf && conf.name || 'master';
+		plugs[this.conf.name] = conf.source;
+	}
+	Plug.prototype = {
+		type: $.SOURCE,
+		name: 'standard#plug',
+		_stub: Jack.prototype._stub,
+		getData: Jack.prototype.getData
+	}
+	Plug.prototype.constructor = Plug;
+	$.registerComponent(Plug);
+})
+
 // processor discrete Haar wavelet transform
 Colorhythm(function($) {
 	function Processor(conf) {	}
 	Processor.prototype = {
 		type: $.PROCESSOR,
-		name: 'standard.js#dwt.haar',
+		name: 'standard#dwt.haar',
 		process: function(buffer) {
 			if (this.lb === undefined || this.lb.length != buffer.length) {
 				this.lb = $.createBuffer(buffer.length);
@@ -52,7 +88,7 @@ Colorhythm(function($) {
 	function Processor(conf) {	}
 	Processor.prototype = {
 		type: $.PROCESSOR,
-		name: 'standard.js#dwt.haar.spectrum',
+		name: 'standard#dwt.haar.spectrum',
 		process: function(buffer) {
 			if (this.b === undefined || this.b.length != buffer.length) {
 				this.b = $.createBuffer(Math.log(buffer.length)/Math.LN2+1);
@@ -81,14 +117,12 @@ Colorhythm(function($) {
 
 // processor levels normalizer
 Colorhythm(function($) {
-	function Processor(conf) {	
-		this.conf = jQuery.extend({}, this.conf, conf);
-	}
+	function Processor(conf) { }
 	Processor.prototype = {
 		type: $.PROCESSOR,
-		name: 'standard.js#levels.normalizer',
+		name: 'standard#levels.normalizer',
 		conf: {
-			a: 0.7,
+			a: 0.07,
 			n: 2
 		},
 		process: function(buffer) {
@@ -117,12 +151,10 @@ Colorhythm(function($) {
 
 // render fader
 Colorhythm(function($) {
-	function Render(conf) {	
-		this.conf = jQuery.extend({}, this.conf, conf);
-	}
+	function Render(conf) { }
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'standard.js#fader',
+		name: 'standard#fader',
 		conf: {
 			color: 'rgba(255,255,255,0.4)'
 		},
@@ -142,7 +174,7 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'standard.js#oscilloscope',
+		name: 'standard#oscilloscope',
 		angle: 0,
 		draw: function(cx, canvas, samples) {
 			var w = canvas.width,
@@ -170,7 +202,7 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'standard.js#peakmeter',
+		name: 'standard#peakmeter',
 		draw: function(cx, canvas, samples) {
 			var w = canvas.width,
 				h = canvas.height;
@@ -203,7 +235,7 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'standard.js#rotate-shadow',
+		name: 'standard#rotate-shadow',
 		conf: {
 			speed: 0.02
 		},
@@ -226,10 +258,10 @@ Colorhythm(function($) {
 	function Render(conf) {	}
 	Render.prototype = {
 		type: $.RENDER,
-		name: 'standard.js#scale-shadow',
+		name: 'standard#scale-shadow',
 		conf: {
 			min: 0.995,
-			max: 1.03,
+			max: 1.08,
 			channel: 0
 		},
 		draw: function(cx, canvas, data) {
@@ -244,6 +276,31 @@ Colorhythm(function($) {
 			cx.translate(-w/2, -h/2);
 			cx.drawImage(canvas, 0, 0);
 			cx.restore();
+		}
+	};
+	$.registerComponent(Render);
+});
+
+// render stroke-colorer
+Colorhythm(function($) {
+	function Render(conf) {	}
+	Render.prototype = {
+		type: $.RENDER,
+		name: 'standard#stroke-colorer',
+		draw: function(cx, canvas, data) {
+			var max = 0,
+				imax = 0;
+			for (var i = 0; i < data.length; i++) {
+				if (data[i] > max) {
+					max = data[i];
+					imax = i;
+				}
+			}
+			if (max > 0.8) {
+				cx.strokeStyle = $.RingColors[imax];
+			} else {
+				cx.strokeStyle = 'black';
+			}
 		}
 	};
 	$.registerComponent(Render);

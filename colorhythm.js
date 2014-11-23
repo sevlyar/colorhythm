@@ -19,9 +19,19 @@ Colorhythm(function($) {
 	ColorhythmError.prototype.constructor = ColorhythmError;
 
 	$.onerror = null;
-	$.error = function(message, err) {
+	$.error = function(id, message, err) {
+		var m = 'Colorhythm error: ' + message;
+		if (err) {
+			if (!err.stack) {
+				m += ': ' + err.name + ': ' + err.message;
+			}
+			else {
+				m += ':\n' + err.stack;
+			}
+		}
+		console.error(m);
 		if ($.onerror) {
-			$.onerror(new ColorhythmError(message, err));
+			$.onerror(new ColorhythmError(id, message, err));
 		}
 	};
 });
@@ -66,7 +76,6 @@ Colorhythm(function($) {
 	var getUserMediaConf = { audio: true };
 
 	function getUserMediaErrorCallback(err) {
-		console.error('Colorhythm: navigator.getUserMedia error: ', err);
 		$.error('EGETUSERMEDIA', 'Unable to access the audio device', err);
 	}
 
@@ -80,196 +89,258 @@ Colorhythm(function($) {
 });
 
 Colorhythm(function($) {
-	var scriptFiles = { };
-	$.loadScriptFile = function(url) {
-		var def = jQuery.Deferred();
-		if (url.length === 0) {
-			def.resolve();
-			return def.promise();
-		}
-		if (scriptFiles[url] === undefined) {
+	// map of pairs module_url:value
+	// value:
+	//	undefined - 	not loading
+	//	deferred obj - 	loading
+	//	true - 			loaded
+	var modules = { 
+		"": true // this module allready loaded
+	};
+
+	function moduleLoaded(url) {
+		console.log('Colorhythm: module ' + url + ' loaded.');
+		var def = modules[url];
+		modules[url] = true;
+		def.resolve(url);
+	}
+
+	$.loadModule = function(url) {
+		var def;
+		switch (modules[url]) {
+		case true:
+			return jQuery.Deferred().resolve(url).promise();
+		case undefined:
 			console.log('Colorhythm: loading module ' + url + '...');
-			scriptFiles[url] = def;
+			def = modules[url] = jQuery.Deferred();
 			jQuery.getScript('plugins/' + url)
-				.done(function() {
-					console.log('Colorhythm: module ' + url + ' loaded.');
-					scriptFiles[url] = true;
-					def.resolve();
-				})
+				.done(function() { moduleLoaded(url); })
 				.fail(function(jqxhr, settings, exception) {
-					console.error('Colorhythm: ' + url + ' module loading error: ', exception);
+					$.error(url + ' module loading error', exception);
 				})
 				.fail(def.reject)
 			;
-		} else {
-			if (scriptFiles[url] !== true) {
-				return scriptFiles[url].promise();
-			} else {
-				def.resolve();
-			}
 		}
-		return def.promise();
+		return modules[url].promise();
 	};
 });
 
 Colorhythm(function($) {
-
 	$.SOURCE = 'source';
 	$.PROCESSOR = 'processor';
 	$.RENDER = 'render';
 	$.SCREEN = 'screen';
 
 	var components = { };
+
 	$.registerComponent = function(comp) {
 		console.log('Colorhythm: ' + comp.prototype.type + ' ' + comp.prototype.name +' registered.');
 		components[comp.prototype.name] = comp;
 	};
-	$.createComponent = function(name, conf) {
+
+	$.createComponent = function(descr) {
+		if (typeof descr == 'string') {
+			descr = { name: descr, conf: {} };
+		}
+
+		var name = descr.name;
+		var conf = descr.conf;
 		var def = jQuery.Deferred();
-		function resolve() {
+
+		var resolve = function() {
 			var comp = new components[name](conf);
+			var conf = jQuery.extend(comp.conf, descr.conf);
+			jQuery.extend(comp, descr);
+			comp.conf = conf;
 			console.log('Colorhythm: ' + comp.type + ' ' + comp.name +' created with settings', conf);
 			def.resolve(comp);
 		}
+
+		var loaded = function() {
+			if (components[name] !== undefined) {
+				resolve();
+			} else {
+				$.error('not found component ' + name);
+				def.reject(name + ' component not found');
+			}		
+		}
+
 		if (components[name] !== undefined) {
 			resolve();
 		} else {
-			$.loadScriptFile(name.split('#')[0])
-				.done(function() {
-					if (components[name] !== undefined) {
-						resolve();
-					} else {
-						console.error('Colorhythm: not found component ' + name);
-						def.reject(name + ' component not found');
-					}
-				})
+			$.loadModule(name.split('#')[0]+'.js')
+				.done(loaded)
 				.fail(def.reject)
 			;
 		}
+
 		return def.promise();
 	};
+
+	$.createComponents = function(descrs) {
+		var comps = { length: 0 };
+		jQuery.each(descrs, function(i, descr) {
+			comps[i] = $.createComponent(descr)
+				.done(function(comp) {
+					comps[i] = comp;
+				});
+			comps.length++;
+		});
+		var def = jQuery.Deferred();
+		jQuery.when.apply(jQuery, comps)
+			.done(def.resolve)
+			.fail(def.reject);
+		return def.promise();
+	}
+
+	var Loader = $.Loader = function() {
+		this.tasks = [];
+		this.progress = 0;
+		this.scheduled = 0;
+	};
+
+	Loader.prototype.load = function(obj) {
+		for (var i = 0; i < this.tasks.length; i++) {
+			this.tasks[i] = this.tasks[i]();
+		}
+		var def = jQuery.Deferred();
+		jQuery.when.apply(jQuery, this.tasks)
+			.done(function() {
+				def.resolve(obj);
+			})
+			.fail(def.reject);
+		this.tasks = [];
+		return def.promise();
+	};
+
+	Loader.prototype.schedule = function(descr, obj, key) {
+		this.scheduled++;
+		var self = this;
+		this.tasks.push(function() {
+			return $.createComponent(descr)
+				.done(function(comp) {
+					obj[key] = comp;
+					self.progress++;
+				})
+		})
+		return this;
+	};
+
+	Loader.prototype.scheduleArray = function(descrs, target) {
+		for (var i = 0; i < descrs.length; i++) {
+			this.schedule(descrs[i], target||descrs, i);
+		}
+		return this;
+	}
 });
 
 Colorhythm(function($) {
+  	window.requestAnimationFrame = 
+  		window.requestAnimationFrame || 
+  		window.mozRequestAnimationFrame || 
+  		window.webkitRequestAnimationFrame || 
+  		window.msRequestAnimationFrame;
+
 	var active = [];
+
 	function refresh() {
-		requestAnimationFrame(refresh);
-		for (var i = 0; i < active.length; i++) {
-			active[i].handle();
-		}
-	}
-	refresh();
-
-	function Node(comp) {
-		this._comp = comp;
-		this._nodes = [];
-		switch(comp.type) {
-		case $.SOURCE:
-			active.unshift(this);
-			break;
-		case $.SCREEN:
+		if (active.length) {
+			requestAnimationFrame(refresh);
 			for (var i = 0; i < active.length; i++) {
-				if (active[i]._comp === comp) {
-					return;
-				}
+				active[i].handle();
 			}
-			active.push(this);
-			break;
-		case $.PROCESSOR:
-		case $.RENDER:
-			break;
-		default:
-			throw new Error('invalid type of component: ' + comp.type);
 		}
 	}
-	Node.prototype = {
-		getComponent: function() {
-			return this._comp;
-		},
-		add: function(comp) {
-			switch(this._comp.type) {
-			case $.SOURCE:
-			case $.PROCESSOR:
-				if (comp.type === $.SOURCE) {
-					throw new Error('unable append component of type "source" to component of type' + this._comp.type);
-				}
-				break;
-			case $.RENDER:
-				if (comp.type !== $.SCREEN) {
-					throw new Error('"render" may draw only on "screen"');
-				}
-				break;
-			case $.SCREEN:
-				throw new Error('unable append to "screen" child node');
-			}
-			var n = new Node(comp);
-			this._nodes.push(n);
-			return n;
-		},
-		handle: function(param) {
-			var comp = this._comp;
-			switch(comp.type) {
-			case $.SOURCE:
-				param = comp.getData();
-				break;
-			case $.PROCESSOR:
-				param = comp.process(param);
-				break;
-			case $.RENDER:
-				for (var i = 0; i < this._nodes.length; i++) {
-					this._nodes[i]._comp.draw(this._comp, param);
-				}
+
+	$.startHandling = function(component) {
+		if (!active.length) {
+			requestAnimationFrame(refresh);
+		} else {
+			if (active.indexOf(component) >= 0) {
 				return;
-			case $.SCREEN:
-				this._comp.present();
-				return;
-			}
-			for (i = 0; i < this._nodes.length; i++) {
-				this._nodes[i].handle(param);
 			}
 		}
+		active.push(component);
 	};
 
-	$.Tree = function(comp) {
-		if (comp.type !== $.SOURCE) {
-			throw new Error('root of tree must be component of type "source"');
+	$.stopHandling = function(component) {
+		var i = active.indexOf(component);
+		if (i >= 0) {
+			active.splice(i, 1);
 		}
-		return new Node(comp);
 	};
-});
+})
 
 Colorhythm(function($) {
-	function loadTree(parent, nodeConf, screen) {
-		if (typeof nodeConf == 'string') {
-			nodeConf = { name: nodeConf, nodes: [] };
-		}
-		return $.createComponent(nodeConf.name, nodeConf.conf)
-			.done(function(comp) {
-				var node = (parent !== null) ? parent.add(comp) : $.Tree(comp);
 
-				var i = -1;
-				function loadChild() {
-					if ((i+1) < nodeConf.nodes.length) {
-						i++;
-						loadTree(node, nodeConf.nodes[i], screen).then(loadChild);
+	var Scene = $.Scene = function(conf) {
+		this.conf = conf;
+		this.plugs = {};
+		this.process = [];
+		this.renders = [];
+
+		var loader = new $.Loader();
+
+		return loader
+			.schedule(conf.screen, this, 'screen')
+			.scheduleArray(conf.process, this.process)
+			.scheduleArray(conf.renders, this.renders)
+			.load(this)
+		;
+	};
+
+	Scene.prototype.powerOn = function() {
+		$.startHandling(this);
+	}; 
+
+	Scene.prototype.powerOff = function() {
+		$.stopHandling(this);
+	};
+
+	Scene.prototype.handle = function() {
+		this.handleProcessors();
+		this.handleRenders();
+		this.screen.present();
+	};
+
+	// временно сделано по одной линии
+	Scene.prototype.handleProcessors = function() {
+		var buffer = null;
+		for (var i = 0; i < this.process.length; i++) {
+			var comp = this.process[i];
+			try {
+				buffer = comp.process(buffer);
+				if (comp.plug) {
+					this.plugs[comp.plug] = buffer;
+				}
+			} catch (err) {
+				$.error('ECOMPERR', 'processor "'+comp.name+'" ('+i+') threw error', err);
+				this.powerOff();
+				return;
+			}
+		}
+	};
+
+	Scene.prototype.handleRenders = function() {
+		for (var i = 0; i < this.renders.length; i++) {
+			var render = this.renders[i];
+			// if (!render.buffers) {
+				render.buffers = [];
+				if (render.jacks) {
+					for (var k = 0; k < render.jacks.length; k++) {
+						render.buffers[k] = this.plugs[render.jacks[k]];
 					}
 				}
-
-				if (comp.type === $.RENDER) {
-					node.add(screen);
-				} else {
-					loadChild();
-				}
-			});
-	}
-	$.createVisualization = function(conf, screen) {
-		loadTree(null, conf, screen);
+			// }
+			try {
+				this.screen.draw(render, render.buffers[0]);
+				} catch (err) {
+				$.error('ECOMPERR', 'render "'+render.name+'" ('+i+') threw error', err);
+				this.powerOff();
+				return;
+			}		
+		}
 	};
-	$.loadVisualization = function(path, screen) {
-		return jQuery.getJSON(path).done(function(conf) {
-			loadTree(null, conf, screen);
-		});
-	};	
 });
 
 Colorhythm(function($) {
@@ -290,43 +361,45 @@ Colorhythm(function($) {
 });
 
 Colorhythm(function($) {
+	var analyser = null;
+	var source = null;
+	var u8buf = $.fillArray(new Uint8Array(4), 128);
+	var f32buf = new Float32Array(4);
+
+	function setStream(stream) {
+		source = $.getAudioContext().createMediaStreamSource(stream);
+
+		// create and setup analyser
+		analyser = $.getAudioContext().createAnalyser();
+		analyser.fftSize = 2048;
+		source.connect(analyser);
+
+		// create data buffer
+		var bufferLength = analyser.frequencyBinCount;
+		u8buf = $.fillArray(new Uint8Array(bufferLength), 128);
+		f32buf = new Float32Array(bufferLength);
+	}
+
 	function Source(conf) {
-		var self = this;
-		function getUserMediaSuccessCallback(stream) {
-			self.setStream(stream);
+		if (!analyser) {
+			analyser = {
+				getByteTimeDomainData: function() {}
+			},
+			$.getUserMedia(function(stream) {
+				setStream(stream);
+			});
 		}
-		$.getUserMedia(getUserMediaSuccessCallback);
 	}
 	Source.prototype = {
 		type: $.SOURCE,
 		name: '#recorder',
-		getData: function() {
-			this.analyser.getByteTimeDomainData(this.u8buf);
-			for (var i = 0; i < this.u8buf.length; i++) {
-				this.f32buf[i] = this.u8buf[i] / 128.0 - 1;
+		process: function() {
+			analyser.getByteTimeDomainData(u8buf);
+			for (var i = 0; i < u8buf.length; i++) {
+				f32buf[i] = u8buf[i] / 128.0 - 1;
 			}
-			return this.f32buf;
-		},
-
-		setStream: function(stream) {
-			this.source = $.getAudioContext().createMediaStreamSource(stream);
-
-			// create and setup analyser
-			this.analyser = $.getAudioContext().createAnalyser();
-			this.analyser.fftSize = 2048;
-			this.source.connect(this.analyser);
-
-			// create data buffer
-			var bufferLength = this.analyser.frequencyBinCount;
-			this.u8buf = $.fillArray(new Uint8Array(bufferLength), 128);
-			this.f32buf = new Float32Array(bufferLength);
-		},
-		// dummies
-		analyser: {
-			getByteTimeDomainData: function() {}
-		},
-		u8buf: $.fillArray(new Uint8Array(4), 128),
-		f32buf: new Float32Array(4)
+			return f32buf;
+		}
 	};
 	$.registerComponent(Source);
 	$.Recorder = function() {

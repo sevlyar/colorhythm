@@ -1,0 +1,46 @@
+{
+	"name": "Pulsar",
+	"author": "Sergey Yarmonov",
+	"descr": {
+		"RU": "",
+		"EN": ""
+	},
+
+	"screen": "#screen",
+
+	"process": [
+		"#recorder",
+		"standard#dwt.haar",
+		"standard#dwt.haar.spectrum",
+		{ 
+			"name": "standard#levels.normalizer",
+			"plug": "#LEVELS"
+		}
+	],
+
+	"renders": [
+		{  
+			"name": "standard#fader",
+			"conf": {
+				"color": "rgba(0,0,0,0.2)"
+			}
+		},
+		{ 
+			"name": "standard#scale-shadow",
+			"jacks": ["#LEVELS"],
+			"conf": {
+				"min": 0.995,
+				"max": 1.03,
+				"channel": 0
+			}
+		},
+		{ 
+			"name": "github.com/sevlyar/organ#",
+			"jacks": ["#LEVELS"]
+		},
+		{ 
+			"name": "standard#stroke-colorer",
+			"jacks": ["#LEVELS"]
+		}
+	]
+}
