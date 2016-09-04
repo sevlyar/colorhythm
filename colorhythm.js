@@ -37,8 +37,8 @@ Colorhythm(function($) {
 });
 
 Colorhythm(function($) {
-	var AudioContext = 	
-		window.AudioContext || 
+	var AudioContext =
+		window.AudioContext ||
 		window.webkitAudioContext;
 
 	if (AudioContext) {
@@ -61,7 +61,7 @@ Colorhythm(function($) {
 });
 
 Colorhythm(function($) {
-	navigator.getUserMedia = 	
+	navigator.getUserMedia =
 		navigator.getUserMedia ||
 		navigator.webkitGetUserMedia ||
 		navigator.mozGetUserMedia ||
@@ -81,8 +81,8 @@ Colorhythm(function($) {
 
 	$.getUserMedia = function(callback) {
 		navigator.getUserMedia(
-			getUserMediaConf, 
-			callback, 
+			getUserMediaConf,
+			callback,
 			getUserMediaErrorCallback
 		);
 	};
@@ -94,7 +94,7 @@ Colorhythm(function($) {
 	//	undefined - 	not loading
 	//	deferred obj - 	loading
 	//	true - 			loaded
-	var modules = { 
+	var modules = {
 		"": true // this module allready loaded
 	};
 
@@ -162,7 +162,7 @@ Colorhythm(function($) {
 			} else {
 				$.error('not found component ' + name);
 				def.reject(name + ' component not found');
-			}		
+			}
 		}
 
 		if (components[name] !== undefined) {
@@ -235,10 +235,10 @@ Colorhythm(function($) {
 });
 
 Colorhythm(function($) {
-  	window.requestAnimationFrame = 
-  		window.requestAnimationFrame || 
-  		window.mozRequestAnimationFrame || 
-  		window.webkitRequestAnimationFrame || 
+  	window.requestAnimationFrame =
+  		window.requestAnimationFrame ||
+  		window.mozRequestAnimationFrame ||
+  		window.webkitRequestAnimationFrame ||
   		window.msRequestAnimationFrame;
 
 	var active = [];
@@ -291,7 +291,7 @@ Colorhythm(function($) {
 
 	Scene.prototype.powerOn = function() {
 		$.startHandling(this);
-	}; 
+	};
 
 	Scene.prototype.powerOff = function() {
 		$.stopHandling(this);
@@ -338,7 +338,7 @@ Colorhythm(function($) {
 				$.error('ECOMPERR', 'render "'+render.name+'" ('+i+') threw error', err);
 				this.powerOff();
 				return;
-			}		
+			}
 		}
 	};
 });
@@ -403,6 +403,75 @@ Colorhythm(function($) {
 	};
 	$.registerComponent(Source);
 	$.Recorder = function() {
+		return new Source();
+	};
+});
+
+Colorhythm(function($) {
+	var analyser = null;
+	var source = null;
+	var u8buf = $.fillArray(new Uint8Array(4), 128);
+	var f32buf = new Float32Array(4);
+
+	function loadSoundFile(url) {
+		var xhr = new XMLHttpRequest();
+	  	xhr.open('GET', url, true);
+	  	xhr.responseType = 'arraybuffer';
+	  	xhr.onload = function(e) {
+	  		console.log(e);
+	  		var audioData = xhr.response;
+	    	$.getAudioContext().decodeAudioData(audioData, function(decoded) {
+	      		play(decoded);
+	    	}, function(e) {
+	      		console.log('Error decoding file', e);
+	    	});
+	  	};
+	  	xhr.send();
+	}
+
+	function play(buffer) {
+		var context = $.getAudioContext();
+		source = context.createBufferSource();
+		source.buffer = buffer;
+
+		source.connect(context.destination);
+		source.loop = true;
+
+		analyser = context.createAnalyser();
+		analyser.fftSize = 2048;
+		source.connect(analyser);
+
+		var bufferLength = analyser.frequencyBinCount;
+		u8buf = $.fillArray(new Uint8Array(bufferLength), 128);
+		f32buf = new Float32Array(bufferLength);
+
+		source.start(0);
+	}
+
+	function Source(conf) {
+		if (!analyser) {
+			analyser = {
+				getByteTimeDomainData: function() {}
+			},
+			loadSoundFile("https://cs1-41v4.vk-cdn.net/p20/551a35ae900b51.mp3?extra=UP0CWUuTItRiiwGz0-54x1DAEk9XeerXylBoajmiTuIT4oXWlOtQH7kMWDcbBJFSQS9RiaP8owfxKQPZ-aJwz8hIlQqXJtCXpVLGAidcn_1USuG-vXEFl_QxtXCDFvA_zC_k904Xob8-Gw");
+		}
+	}
+	Source.prototype = {
+		type: $.SOURCE,
+		name: '#player',
+		conf: {
+			source: ""
+		},
+		process: function() {
+			analyser.getByteTimeDomainData(u8buf);
+			for (var i = 0; i < u8buf.length; i++) {
+				f32buf[i] = u8buf[i] / 128.0 - 1;
+			}
+			return f32buf;
+		}
+	};
+	$.registerComponent(Source);
+	$.Player = function() {
 		return new Source();
 	};
 });
