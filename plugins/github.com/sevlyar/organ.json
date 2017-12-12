@@ -9,7 +9,7 @@
 	"screen": "#screen",
 
 	"process": [
-		"#player",
+		"#recorder",
 		"standard#dwt.haar",
 		"standard#dwt.haar.spectrum",
 		{
