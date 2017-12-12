@@ -9,7 +9,7 @@
 	"screen": "#screen",
 
 	"process": [
-		"#player",
+		"#recorder",
 		{
 			"name": "standard#dwt.haar",
 			"plug": "#WAVE"
