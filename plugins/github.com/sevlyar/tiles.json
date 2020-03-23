@@ -1,0 +1,52 @@
+{
+    "name": "Tiles",
+    "author": "Sergey Yarmonov",
+    "descr": {
+        "RU": "",
+        "EN": ""
+    },
+
+    "screen": "#screen",
+
+    "process": [
+        "#recorder",
+        "standard#dwt.haar",
+        "standard#dwt.haar.spectrum",
+        {
+            "name": "standard#levels.channelnormalizer",
+            "plug": "#NORMALIZED"
+        },
+        {
+            "name": "standard#levels.fader",
+            "plug": "#LEVELS",
+            "conf": {
+                "fadeTime": 150
+            }
+        }
+    ],
+
+    "renders": [
+        {
+            "name": "standard#fader",
+            "conf": {
+                "color": "rgba(0,0,0,0.3)"
+            }
+        },
+        {
+            "name": "standard#scale-shadow",
+            "jacks": ["#LEVELS"],
+            "conf": {
+                "min": 0.95,
+                "max": 1.025,
+                "channel": 0
+            }
+        },
+        {
+            "name": "github.com/sevlyar/tiles#",
+            "jacks": ["#LEVELS"],
+            "conf": {
+                "mode": "circles"
+            }
+        }
+    ]
+}

@@ -115,8 +115,8 @@ Colorhythm(function($) {
 			def = modules[url] = jQuery.Deferred();
 			jQuery.getScript('plugins/' + url)
 				.done(function() { moduleLoaded(url); })
-				.fail(function(jqxhr, settings, exception) {
-					$.error(url + ' module loading error', exception);
+				.fail(function(jqxhr, settings, ex) {
+					$.error(url + ' module loading error', ex);
 				})
 				.fail(def.reject)
 			;
@@ -143,7 +143,7 @@ Colorhythm(function($) {
 			descr = { name: descr, conf: {} };
 		}
 
-		var name = descr.name;
+		var name = descr.name
 		var conf = descr.conf;
 		var def = jQuery.Deferred();
 
@@ -243,11 +243,11 @@ Colorhythm(function($) {
 
 	var active = [];
 
-	function refresh() {
+	function refresh(ts) {
 		if (active.length) {
 			requestAnimationFrame(refresh);
 			for (var i = 0; i < active.length; i++) {
-				active[i].handle();
+				active[i].handle(ts);
 			}
 		}
 	}
@@ -297,19 +297,19 @@ Colorhythm(function($) {
 		$.stopHandling(this);
 	};
 
-	Scene.prototype.handle = function() {
-		this.handleProcessors();
+	Scene.prototype.handle = function(ts) {
+		this.handleProcessors(ts);
 		this.handleRenders();
 		this.screen.present();
 	};
 
 	// временно сделано по одной линии
-	Scene.prototype.handleProcessors = function() {
+	Scene.prototype.handleProcessors = function(ts) {
 		var buffer = null;
 		for (var i = 0; i < this.process.length; i++) {
 			var comp = this.process[i];
 			try {
-				buffer = comp.process(buffer);
+				buffer = comp.process(buffer, ts);
 				if (comp.plug) {
 					this.plugs[comp.plug] = buffer;
 				}
@@ -431,6 +431,7 @@ Colorhythm(function($) {
 
 	function play(buffer) {
 		var context = $.getAudioContext();
+
 		source = context.createBufferSource();
 		source.buffer = buffer;
 
@@ -448,12 +449,32 @@ Colorhythm(function($) {
 		source.start(0);
 	}
 
+	function createMediaElementSource(url) {
+		var context = $.getAudioContext();
+
+		var audio = new Audio();
+		audio.src = url;
+		source = context.createMediaElementSource(audio);
+
+		source.connect(context.destination);
+
+		analyser = context.createAnalyser();
+		analyser.fftSize = 2048;
+		source.connect(analyser);
+
+		var bufferLength = analyser.frequencyBinCount;
+		u8buf = $.fillArray(new Uint8Array(bufferLength), 128);
+		f32buf = new Float32Array(bufferLength);
+
+		source.mediaElement.play();
+	}
+
 	function Source(conf) {
 		if (!analyser) {
 			analyser = {
 				getByteTimeDomainData: function() {}
 			},
-			loadSoundFile("https://cs1-41v4.vk-cdn.net/p20/551a35ae900b51.mp3?extra=UP0CWUuTItRiiwGz0-54x1DAEk9XeerXylBoajmiTuIT4oXWlOtQH7kMWDcbBJFSQS9RiaP8owfxKQPZ-aJwz8hIlQqXJtCXpVLGAidcn_1USuG-vXEFl_QxtXCDFvA_zC_k904Xob8-Gw");
+			createMediaElementSource("sound.mp3");
 		}
 	}
 	Source.prototype = {

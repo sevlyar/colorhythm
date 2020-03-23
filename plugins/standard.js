@@ -18,7 +18,7 @@ Colorhythm(function($) {
 	var plugs = {};
 
 	function Jack(conf) {
-		this.conf.name = conf && conf.name || 'master'; 
+		this.conf.name = conf && conf.name || 'master';
 	}
 	Jack.prototype = {
 		type: $.SOURCE,
@@ -148,6 +148,133 @@ Colorhythm(function($) {
 	$.registerComponent(Processor);
 });
 
+Colorhythm(function($) {
+	function Processor(conf) { }
+	Processor.prototype = {
+		type: $.PROCESSOR,
+		name: 'standard#levels.fader',
+		conf: {
+			fadeTime: 200,
+		},
+		process: function(samples, ts) {
+			// initializtion
+			if (this.b === undefined || this.b.length != samples.length) {
+				this.b = $.fillArray($.createBuffer(samples.length), 0);
+			}
+			if (this.prevTs === undefined) {
+				this.prevTs = ts;
+			}
+			var sincePrev = ts - this.prevTs
+			this.prevTs = ts;
+			// processing
+			var d = sincePrev / this.conf.fadeTime
+			for (var i = 0; i < samples.length; i++) {
+				// fade level;
+				this.b[i] -= d * this.b[i];
+				if (this.b[i] < 0) {
+					this.b[i] = 0
+				}
+				var level = samples[i];
+				if (level > this.b[i]) {
+					this.b[i] = level;
+				}
+			}
+			return this.b;
+		}
+	};
+	$.registerComponent(Processor);
+});
+
+// processor channel normalizer
+Colorhythm(function($) {
+	function Processor(conf) { }
+	Processor.prototype = {
+		type: $.PROCESSOR,
+		name: 'standard#levels.channelnormalizer',
+		conf: {
+			scaleDuration: 3000, // milliseconds
+			lowLimit: 0.01,
+			cutOff: 0.1
+		},
+		process: function(samples, ts) {
+			// initializtion
+			if (this.b === undefined || this.b.length != samples.length) {
+				this.b = $.createBuffer(samples.length);
+				this.max = $.fillArray($.createBuffer(samples.length), 0.0001);
+			}
+			if (this.prevTs === undefined) {
+				this.prevTs = ts;
+			}
+			var sincePrev = ts - this.prevTs
+			this.prevTs = ts;
+			// processing
+			var d = sincePrev / this.conf.scaleDuration
+			for (var i = 0; i < samples.length; i++) {
+				var level = samples[i];
+				if (level > this.max[i]) {
+					this.max[i] = level;
+				}
+				// reduce level in time;
+				this.max[i] -= d * this.max[i];
+				if (this.max[i] < this.conf.lowLimit) {
+					this.max[i] = this.conf.lowLimit;
+				}
+			}
+			// adjust max levels
+			for (var i = 0; i < this.max.length; i++) {
+				var l, r;
+				if (i == 0) {
+					l = this.max[i];
+				} else {
+					l = this.max[i-1];
+				}
+				if (i >= this.max.length - 1) {
+					r = this.max[i];
+				} else {
+					r = this.max[i+1];
+				}
+				var limit = (l+r)/3;
+				if (this.max[i] < limit) {
+					this.max[i] = limit;
+				}
+			}
+			// normalize channels
+			for (var i = 0; i < samples.length; i++) {
+				var level = samples[i];
+				// scale signal
+				level /= this.max[i];
+				if (level < this.conf.cutOff) {
+					level = 0;
+				}
+				this.b[i] = level;
+			}
+
+			// logging
+			if (this.mark === undefined) {
+				this.mark = ts
+			}
+			if (ts - this.mark > 2000) {
+				printArray("max", this.max);
+				this.mark = ts;
+			}
+
+			return this.b;
+		}
+	};
+	$.registerComponent(Processor);
+});
+
+function printArray(msg, v) {
+	var arr = []
+	for (var i = 0; i < v.length; i++) {
+		var n = v[i]
+		if (n > 0.001) {
+			n = n.toFixed(2);
+		}
+		arr.push(n);
+	}
+	console.log(msg, arr);
+}
 
 // render fader
 Colorhythm(function($) {
@@ -203,6 +330,11 @@ Colorhythm(function($) {
 	Render.prototype = {
 		type: $.RENDER,
 		name: 'standard#peakmeter',
+		conf: {
+			color: 'white',
+			shift: 2,
+			width: 2,
+		},
 		draw: function(cx, canvas, samples) {
 			var w = canvas.width,
 				h = canvas.height;
@@ -213,13 +345,9 @@ Colorhythm(function($) {
 
 			var x = 0;
 			for (var i = 0; i < samples.length; i++) {
-				cx.fillStyle = 'black';
-				cx.beginPath();
+				cx.fillStyle = this.conf.color;
 				var peak = hscale*samples[i];
-				cx.rect(x, h - peak, rwd, peak);
-				cx.closePath();
-				cx.fill();
-				cx.stroke();
+				cx.fillRect(x + this.conf.shift, h - peak, this.conf.width, peak);
 				x += (rwd + rmar);
 			}
 		}
